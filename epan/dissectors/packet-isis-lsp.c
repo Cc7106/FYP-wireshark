@@ -490,6 +490,10 @@ static int hf_isis_lsp_clv_bier_subsub_len;
 static int hf_isis_lsp_clv_bier_subsub_mplsencap_maxsi;
 static int hf_isis_lsp_clv_bier_subsub_mplsencap_bslen;
 static int hf_isis_lsp_clv_bier_subsub_mplsencap_label;
+static int hf_isis_lsp_clv_bier_subsub_endbier_ipv6addr;
+static int hf_isis_lsp_clv_bier_subsub_bierv6encap_maxsi;
+static int hf_isis_lsp_clv_bier_subsub_bierv6encap_bslen;
+static int hf_isis_lsp_clv_bier_subsub_bierv6encap_bift_id;
 static int hf_isis_lsp_srv6_loc_metric;
 static int hf_isis_lsp_srv6_loc_flags;
 static int hf_isis_lsp_srv6_loc_flags_d;
@@ -926,12 +930,29 @@ static const range_string isis_lsp_bier_alg_vals[] = {
     {   0,   0, NULL }
 };
 
+static const value_string isis_lsp_bier_bsl_vals[] = {
+    { 1, "64 bits" },
+    { 2, "128 bits" },
+    { 3, "256 bits" },
+    { 4, "512 bits" },
+    { 5, "1024 bits" },
+    { 6, "2048 bits" },
+    { 7, "4096 bits" },
+    { 0, NULL }
+};
+
+
+#define ISIS_LSP_BIERV6_ENCAP 6
+#define ISIS_LSP_END_BIER 7
+
 /*
     From: https://www.iana.org/assignments/isis-tlv-codepoints/isis-tlv-codepoints.xhtml
     sub-sub-TLVs for BIER Info sub-TLV
 */
 static const value_string isis_lsp_bier_subsubtlv_type_vals[] = {
     { 1, "BIER MPLS Encapsulation" },
+    { ISIS_LSP_BIERV6_ENCAP, "BIERv6 Encapsulation"},
+    { ISIS_LSP_END_BIER, "END.BIER SID"},
     { 0, NULL }
 };
 
@@ -1128,6 +1149,24 @@ dissect_bierinfo_subsubtlv (tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
         proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_mplsencap_maxsi, tvb, offset, 1, ENC_BIG_ENDIAN);
         proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_mplsencap_bslen, tvb, offset+1, 1, ENC_BIG_ENDIAN);
         proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_mplsencap_label, tvb, offset+1, 3, ENC_BIG_ENDIAN);
+        break;
+    case ISIS_LSP_BIERV6_ENCAP:
+        if (tlv_len != 4) {
+            proto_tree_add_expert_format(tree, pinfo, &ei_isis_lsp_malformed_subtlv,
+                    tvb, offset, tlv_len, "TLV length (%d) != 4 bytes", tlv_len);
+            return;
+        }
+        proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_bierv6encap_maxsi, tvb, offset, 1, ENC_BIG_ENDIAN);
+        proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_bierv6encap_bslen, tvb, offset+1, 1, ENC_BIG_ENDIAN);
+        proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_bierv6encap_bift_id, tvb, offset+1, 3, ENC_BIG_ENDIAN);
+        break;
+    case ISIS_LSP_END_BIER:
+        if (tlv_len != 16) {
+            proto_tree_add_expert_format(tree, pinfo, &ei_isis_lsp_malformed_subtlv,
+                    tvb, offset, tlv_len, "TLV length (%d) != 16 bytes", tlv_len);
+            return;
+        }
+        proto_tree_add_item(tree, hf_isis_lsp_clv_bier_subsub_endbier_ipv6addr, tvb, offset, 16, ENC_NA);
         break;
     default:
         break;
@@ -7126,6 +7165,26 @@ proto_register_isis_lsp(void)
         },
         { &hf_isis_lsp_clv_bier_subsub_mplsencap_label,
             { "Label", "isis.lsp.bier.subsub.mplsencap.label",
+              FT_UINT24, BASE_DEC, NULL, 0x0FFFFF,
+              NULL, HFILL }
+        },
+        { &hf_isis_lsp_clv_bier_subsub_endbier_ipv6addr,
+            { "End. BIER IPv6 Address", "isis.lsp.bier.subsub.endbier.addr",
+              FT_IPv6, BASE_NONE, NULL, 0x00,
+              NULL, HFILL }
+        },
+        { &hf_isis_lsp_clv_bier_subsub_bierv6encap_maxsi,
+            { "Maximum Set Identifier", "isis.lsp.bier.subsub.bierv6encap.maxsi",
+              FT_UINT8, BASE_DEC, NULL, 0x00,
+              NULL, HFILL }
+        },
+        { &hf_isis_lsp_clv_bier_subsub_bierv6encap_bslen,
+            { "BitString Length", "isis.lsp.bier.subsub.bierv6encap.bslen",
+              FT_UINT8, BASE_DEC, VALS(isis_lsp_bier_bsl_vals), 0xF0,
+              NULL, HFILL }
+        },
+        { &hf_isis_lsp_clv_bier_subsub_bierv6encap_bift_id,
+            { "BIFT-ID", "isis.lsp.bier.subsub.bierv6encap.bift-id",
               FT_UINT24, BASE_DEC, NULL, 0x0FFFFF,
               NULL, HFILL }
         },

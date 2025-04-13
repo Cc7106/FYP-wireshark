@@ -2668,6 +2668,10 @@ static int hf_bgp_pmsi_tunnel_pimbidir_pmc_group;
 static int hf_bgp_pmsi_tunnel_ingress_rep_addr;
 static int hf_bgp_pmsi_tunnel_ingress_rep_addr6;
 
+static int hf_bgp_pmsi_tunnel_bier_sub_domain_id;
+static int hf_bgp_pmsi_tunnel_bier_bfr_id;
+static int hf_bgp_pmsi_tunnel_bier_bfr_prefix;
+
 /* RFC 7311 attribute */
 static int hf_bgp_aigp_type;
 static int hf_bgp_aigp_tlv_length;
@@ -9952,6 +9956,17 @@ dissect_bgp_update_pmsi_attr(packet_info *pinfo, proto_tree *parent_tree, tvbuff
                                        tvb_ip6_to_str(pinfo->pool, tvb, offset+5));
             }
             break;
+        case PMSI_TUNNEL_BIER:
+            g_message("bier here");
+            proto_tree_add_item(tunnel_id_tree, hf_bgp_pmsi_tunnel_bier_sub_domain_id, tvb, offset+5, 1, ENC_BIG_ENDIAN);
+            proto_tree_add_item(tunnel_id_tree, hf_bgp_pmsi_tunnel_bier_bfr_id, tvb, offset+6, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(tunnel_id_tree, hf_bgp_pmsi_tunnel_bier_bfr_prefix, tvb, offset+8, 16, ENC_NA);
+            proto_item_append_text(tunnel_id_item, ": Sub-domain-id: %u, BFR-ID: %u, BFR-prefix: %s",
+                tvb_get_uint8(tvb,offset+5),
+                tvb_get_ntohs(tvb, offset+6),
+                tvb_ip6_to_str(pinfo->pool, tvb, offset+8));
+            break;
+
         default:
             expert_add_info_format(pinfo, pmsi_tunnel_type_item, &ei_bgp_attr_pmsi_tunnel_type,
                                             "Tunnel type %u wrong", tunnel_type);
@@ -12342,6 +12357,16 @@ proto_register_bgp(void)
       { &hf_bgp_pmsi_tunnel_ingress_rep_addr6,
         {"Tunnel type ingress replication IP end point", "bgp.update.path_attribute.pmsi.ingress_rep_ip6", FT_IPv6, BASE_NONE,
         NULL, 0x0, NULL, HFILL}},
+
+        { &hf_bgp_pmsi_tunnel_bier_sub_domain_id,
+            {"Sub-domain-id", "bgp.update.path_attribute.pmsi.bier.sub_domain_id", FT_UINT8, BASE_DEC,
+            NULL, 0x0, NULL, HFILL}},
+        { &hf_bgp_pmsi_tunnel_bier_bfr_id,
+            {"BFR-id", "bgp.update.path_attribute.pmsi.bier.bfr_id", FT_UINT16, BASE_DEC,
+            NULL, 0x0, NULL, HFILL}},
+        { &hf_bgp_pmsi_tunnel_bier_bfr_prefix,
+            {"BFR-prefix IPv6", "bgp.update.path_attribute.pmsi.bier.bfr_prefix", FT_IPv6, BASE_NONE,
+             NULL, 0x0, NULL, HFILL}},
 
         /* BGP Only to Customer (OTC) Attribute, RFC9234 */
       { &hf_bgp_update_path_attribute_otc,

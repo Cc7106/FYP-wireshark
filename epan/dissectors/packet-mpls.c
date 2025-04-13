@@ -384,6 +384,7 @@ dissect_try_cw_first_nibble( tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree
             call_dissector(dissector_pw_ach, tvb, pinfo, tree );
             return true;
         default:
+            g_message("hehe found ya");
             break;
     }
     return false;
@@ -516,6 +517,7 @@ dissect_mpls(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_
     }
 
     first_nibble = (tvb_get_uint8(tvb, offset) >> 4) & 0x0F;
+    g_message("first_nibble = %d", first_nibble);
     p_add_proto_data(pinfo->pool, pinfo, proto_mpls, 1, GUINT_TO_POINTER(first_nibble));
 
     next_tvb = tvb_new_subset_remaining(tvb, offset);
@@ -528,6 +530,7 @@ dissect_mpls(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_
                                next_tvb, pinfo, tree, false, &mplsinfo);
     if (found) {
         /* Yes, there is. */
+        g_message("MPLS label found");
         return tvb_captured_length(tvb);
     }
 
@@ -548,6 +551,8 @@ dissect_mpls(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_
      */
     if (dissector_try_uint_with_data(mpls_pfn_subdissector_table, first_nibble,
         next_tvb, pinfo, tree, false, &mplsinfo)) {
+       // first_nibble = 5;
+        g_message("MPLS label found in nibble, %u", first_nibble);
 
         payload_handle = dissector_get_uint_handle(mpls_pfn_subdissector_table, first_nibble);
         if (payload_handle == dissector_ip || payload_handle == dissector_ipv6) {
@@ -768,7 +773,6 @@ proto_reg_handoff_mpls(void)
     dissector_ipv6                  = find_dissector_add_dependency("ipv6", proto_pw_mcw );
     dissector_ip                    = find_dissector_add_dependency("ip", proto_pw_mcw );
     dissector_pw_eth_heuristic      = find_dissector_add_dependency("pw_eth_heuristic", proto_pw_mcw);
-
     /*
      * Our previous default behavior has been to try the Eth CW heuristic
      * on first nibble 0. Continue doing that. For other first nibbles
